@@ -1,0 +1,138 @@
+<Window x:Class="ProjectEditor.PropertyEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Property Editor" Height="600" Width="700"
+        WindowStartupLocation="CenterOwner"
+        Background="#F8F9FA">
+    
+    <Window.Resources>
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#005A9E"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#6C757D"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#5A6268"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#28A745"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#218838"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="White" CornerRadius="6" Padding="15" Margin="0,0,0,15"
+                BorderBrush="#DEE2E6" BorderThickness="1">
+            <TextBlock FontWeight="SemiBold" FontSize="14" Foreground="#212529">
+                <Run Text="File: "/>
+                <Run Text="{Binding FilePath}" FontWeight="Normal" Foreground="#6C757D"/>
+            </TextBlock>
+        </Border>
+
+        <Border Grid.Row="1" Background="White" CornerRadius="6" Margin="0,0,0,15"
+                BorderBrush="#DEE2E6" BorderThickness="1">
+            <DataGrid Name="PropertyGrid" 
+                      AutoGenerateColumns="False" 
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="True"
+                      BorderThickness="0"
+                      Background="Transparent"
+                      RowBackground="White"
+                      AlternatingRowBackground="#F8F9FA">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Property Name" Binding="{Binding Key}" Width="*" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="2*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <Border Grid.Row="2" Background="White" CornerRadius="6" Padding="15" Margin="0,0,0,15"
+                BorderBrush="#DEE2E6" BorderThickness="1">
+            <StackPanel>
+                <TextBlock Text="Add New Property" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,12" Foreground="#212529"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Property:" Width="100" VerticalAlignment="Center" Margin="0,0,10,10"/>
+                    <ComboBox Grid.Row="0" Grid.Column="1" Name="NewPropertyComboBox" Margin="0,0,0,10" Height="32" VerticalContentAlignment="Center">
+                        <ComboBoxItem Content="-- Select Property --"/>
+                        <ComboBoxItem Content="TargetFramework"/>
+                        <ComboBoxItem Content="LangVersion"/>
+                        <ComboBoxItem Content="Nullable"/>
+                        <ComboBoxItem Content="ImplicitUsings"/>
+                        <ComboBoxItem Content="TreatWarningsAsErrors"/>
+                        <ComboBoxItem Content="GenerateDocumentationFile"/>
+                        <ComboBoxItem Content="RootNamespace"/>
+                        <ComboBoxItem Content="AssemblyName"/>
+                        <ComboBoxItem Content="AssemblyVersion"/>
+                        <ComboBoxItem Content="FileVersion"/>
+                        <ComboBoxItem Content="Copyright"/>
+                        <ComboBoxItem Content="Authors"/>
+                        <ComboBoxItem Content="Company"/>
+                        <ComboBoxItem Content="Product"/>
+                        <ComboBoxItem Content="Description"/>
+                    </ComboBox>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Initial Value:" Width="100" VerticalAlignment="Center" Margin="0,0,10,10"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" Name="NewPropertyValueTextBox" Margin="0,0,0,10" Height="32" VerticalContentAlignment="Center"/>
+
+                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="Add Property" Width="140" Height="36" Click="OnAddPropertyClicked" Style="{StaticResource ModernButton}" Margin="0,0,10,0"/>
+                        <Button Content="Delete Selected" Width="140" Height="36" Click="OnDeleteRowClicked" Style="{StaticResource SecondaryButton}"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Apply" Width="110" Height="40" Click="OnApplyClicked" Style="{StaticResource SuccessButton}" Margin="0,0,10,0" IsDefault="True"/>
+            <Button Content="Cancel" Width="110" Height="40" Click="OnCancelClicked" Style="{StaticResource SecondaryButton}" IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

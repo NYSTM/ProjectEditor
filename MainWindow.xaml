@@ -1,0 +1,442 @@
+﻿<Window x:Class="ProjectEditor.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ProjectEditor"
+        mc:Ignorable="d"
+        Title="プロジェクトファイル編集ツール" Height="750" Width="1200"
+        Background="#F8F9FA">
+    
+    <Window.Resources>
+        <!-- モダンなボタンスタイル -->
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#005A9E"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#004578"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- セカンダリボタンスタイル -->
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#6C757D"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#5A6268"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#494F54"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- プライマリボタンスタイル（一括適用用） -->
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#28A745"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#218838"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#1E7E34"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ファイル追加エリア -->
+        <Border Grid.Row="0" Background="White" CornerRadius="6" Padding="15" Margin="0,0,0,15"
+                BorderBrush="#DEE2E6" BorderThickness="1">
+            <StackPanel>
+                <TextBlock Text="📁 ファイル管理" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" Foreground="#212529"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <Button Content="ファイルを追加" Width="150" Height="36" Click="OnAddFilesClicked" 
+                            Style="{StaticResource ModernButton}" Margin="0,0,10,0"/>
+                    <Button Content="フォルダから追加" Width="150" Height="36" Click="OnAddFromFolderClicked" 
+                            Style="{StaticResource ModernButton}" Margin="0,0,10,0"/>
+                    <Button Content="クリア" Width="100" Height="36" Click="OnClearClicked" 
+                            Style="{StaticResource SecondaryButton}" Margin="0,0,10,0"/>
+                    <Button Content="🧹 レガシータグ削除" Width="180" Height="36" Click="OnCleanupLegacyClicked" 
+                            Style="{StaticResource SecondaryButton}"/>
+                </StackPanel>
+                <CheckBox Name="IncludeSubfoldersCheckBox" Content="サブフォルダを含める" IsChecked="True" 
+                          VerticalAlignment="Center" Margin="5,0,0,0" FontSize="13"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 一括編集設定 -->
+        <GroupBox Grid.Row="1" Margin="0,0,0,15" Padding="15" Background="White" BorderBrush="#DEE2E6" BorderThickness="1">
+            <GroupBox.Header>
+                <TextBlock Text="⚙️ 一括編集設定" FontSize="16" FontWeight="SemiBold" Foreground="#212529"/>
+            </GroupBox.Header>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="320">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                        <!-- 基本設定 -->
+                        <TextBlock Text="基本設定" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="TargetFramework:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Name="TargetFrameworkInput" Margin="0,0,0,5" Text=""/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="LangVersion:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Name="LangVersionInput" Margin="0,0,0,5" Text=""/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="OutputType:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <ComboBox Grid.Row="2" Grid.Column="1" Name="OutputTypeInput" Margin="0,0,0,5" IsEnabled="False">
+                                <ComboBoxItem Content=""/>
+                                <ComboBoxItem Content="Exe"/>
+                                <ComboBoxItem Content="Library"/>
+                                <ComboBoxItem Content="WinExe"/>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="PlatformTarget:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <ComboBox Grid.Row="3" Grid.Column="1" Name="PlatformTargetInput" Margin="0,0,0,5">
+                                <ComboBoxItem Content=""/>
+                                <ComboBoxItem Content="AnyCPU"/>
+                                <ComboBoxItem Content="x86"/>
+                                <ComboBoxItem Content="x64"/>
+                                <ComboBoxItem Content="ARM64"/>
+                            </ComboBox>
+                        </Grid>
+
+                        <!-- コード品質 -->
+                        <TextBlock Text="コード品質" FontWeight="Bold" FontSize="14" Margin="0,5,0,5"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Nullable:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" Name="NullableInput" Margin="0,0,0,5">
+                                <ComboBoxItem Content=""/>
+                                <ComboBoxItem Content="enable" IsSelected="True"/>
+                                <ComboBoxItem Content="disable"/>
+                                <ComboBoxItem Content="warnings"/>
+                                <ComboBoxItem Content="annotations"/>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="ImplicitUsings:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <ComboBox Grid.Row="1" Grid.Column="1" Name="ImplicitUsingsInput" Margin="0,0,0,5">
+                                <ComboBoxItem Content=""/>
+                                <ComboBoxItem Content="enable" IsSelected="True"/>
+                                <ComboBoxItem Content="disable"/>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="TreatWarningsAsErrors:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <ComboBox Grid.Row="2" Grid.Column="1" Name="TreatWarningsAsErrorsInput" Margin="0,0,0,5">
+                                <ComboBoxItem Content=""/>
+                                <ComboBoxItem Content="true"/>
+                                <ComboBoxItem Content="false"/>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="GenerateDocumentationFile:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <ComboBox Grid.Row="3" Grid.Column="1" Name="GenerateDocumentationFileInput" Margin="0,0,0,5">
+                                <ComboBoxItem Content=""/>
+                                <ComboBoxItem Content="true"/>
+                                <ComboBoxItem Content="false"/>
+                            </ComboBox>
+                        </Grid>
+
+                        <!-- プロジェクト設定 -->
+                        <TextBlock Text="プロジェクト設定" FontWeight="Bold" FontSize="14" Margin="0,5,0,5"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="RootNamespace:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Name="RootNamespaceInput" Margin="0,0,0,5"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="AssemblyName:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Name="AssemblyNameInput" Margin="0,0,0,5"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="AppendTargetFrameworkToOutputPath:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <ComboBox Grid.Row="2" Grid.Column="1" Name="AppendTargetFrameworkToOutputPathInput" Margin="0,0,0,5">
+                                <ComboBoxItem Content=""/>
+                                <ComboBoxItem Content="true"/>
+                                <ComboBoxItem Content="false" IsSelected="True"/>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="SatelliteResourceLanguages:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="3" Grid.Column="1" Name="SatelliteResourceLanguagesInput" Margin="0,0,0,5" Text="ja;en"/>
+                        </Grid>
+
+                        <!-- バージョン情報 -->
+                        <TextBlock Text="バージョン情報" FontWeight="Bold" FontSize="14" Margin="0,5,0,5"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Version:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Name="VersionInput" Margin="0,0,0,5" IsReadOnly="True" Background="#F0F0F0"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="AssemblyVersion:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Name="AssemblyVersionInput" Margin="0,0,0,5"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="FileVersion:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Name="FileVersionInput" Margin="0,0,0,5"/>
+                        </Grid>
+
+                        <!-- メタデータ -->
+                        <TextBlock Text="メタデータ" FontWeight="Bold" FontSize="14" Margin="0,5,0,5"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Copyright:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Name="CopyrightInput" Margin="0,0,0,5"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Authors:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Name="AuthorsInput" Margin="0,0,0,5"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Company:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Name="CompanyInput" Margin="0,0,0,5"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Product:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="3" Grid.Column="1" Name="ProductInput" Margin="0,0,0,5"/>
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Description:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="4" Grid.Column="1" Name="DescriptionInput" Margin="0,0,0,5"/>
+
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="RepositoryUrl:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="5" Grid.Column="1" Name="RepositoryUrlInput" Margin="0,0,0,5" IsReadOnly="True" Background="#F0F0F0"/>
+                        </Grid>
+
+                        <!-- ビルド構成設定 -->
+                        <TextBlock Text="ビルド構成設定 (Debug)" FontWeight="Bold" FontSize="14" Margin="0,5,0,5"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="DebugType:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" Name="DebugTypeDebugInput" Margin="0,0,0,5" SelectedIndex="1">
+                                <ComboBoxItem Content=""/>
+                                <ComboBoxItem Content="embedded"/>
+                                <ComboBoxItem Content="full"/>
+                                <ComboBoxItem Content="portable"/>
+                                <ComboBoxItem Content="pdbonly"/>
+                                <ComboBoxItem Content="none"/>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="OutputPath:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Name="OutputPathDebugInput" Margin="0,0,0,5"/>
+                        </Grid>
+
+                        <!-- ビルド構成設定 (Release) -->
+                        <TextBlock Text="ビルド構成設定 (Release)" FontWeight="Bold" FontSize="14" Margin="0,5,0,5"/>
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="DebugType:" VerticalAlignment="Center" Margin="0,0,5,5"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" Name="DebugTypeReleaseInput" Margin="0,0,0,5" SelectedIndex="5">
+                                <ComboBoxItem Content=""/>
+                                <ComboBoxItem Content="embedded"/>
+                                <ComboBoxItem Content="full"/>
+                                <ComboBoxItem Content="portable"/>
+                                <ComboBoxItem Content="pdbonly"/>
+                                <ComboBoxItem Content="none"/>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="OutputPath:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Name="OutputPathReleaseInput" Margin="0,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- 説明パネル -->
+                    <Border Grid.Column="1" BorderBrush="#DEE2E6" BorderThickness="1" Background="#F8F9FA" 
+                            CornerRadius="6" Padding="12">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="💡 プロパティ説明" FontWeight="Bold" FontSize="14" Margin="0,0,0,10" Foreground="#212529"/>
+
+                                <TextBlock FontWeight="Bold" Text="基本設定" Margin="0,0,0,3" Foreground="#495057"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8" Foreground="#6C757D">
+                                    <Bold>TargetFramework:</Bold> 対象の.NETフレームワーク (例: net8.0, net7.0)<LineBreak/>
+                                    <Bold>LangVersion:</Bold> C#/VB言語バージョン (例: 12.0, latest)<LineBreak/>
+                                    <Bold>OutputType:</Bold> Exe=コンソール, Library=DLL, WinExe=GUI <Run Foreground="Red">[編集不可]</Run><LineBreak/>
+                                    <Bold>PlatformTarget:</Bold> AnyCPU, x86, x64, ARM64
+                                </TextBlock>
+
+                                <TextBlock FontWeight="Bold" Text="コード品質" Margin="0,5,0,3" Foreground="#495057"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8" Foreground="#6C757D">
+                                    <Bold>Nullable:</Bold> Null許容参照型 (enable/disable/warnings/annotations) <Run Foreground="Blue">[C#専用]</Run><LineBreak/>
+                                    <Bold>ImplicitUsings:</Bold> グローバルusingの自動追加 <Run Foreground="Blue">[C#専用]</Run><LineBreak/>
+                                    <Bold>TreatWarningsAsErrors:</Bold> 警告をエラーとして扱う<LineBreak/>
+                                    <Bold>GenerateDocumentationFile:</Bold> XMLドキュメント生成
+                                </TextBlock>
+
+                                <TextBlock FontWeight="Bold" Text="プロジェクト設定" Margin="0,5,0,3" Foreground="#495057"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8" Foreground="#6C757D">
+                                    <Bold>RootNamespace:</Bold> デフォルトの名前空間<LineBreak/>
+                                    <Bold>AssemblyName:</Bold> 生成される実行ファイル/DLL名<LineBreak/>
+                                    <Bold>AppendTargetFrameworkToOutputPath:</Bold> 出力パスにTFMを追加<LineBreak/>
+                                    <Bold>SatelliteResourceLanguages:</Bold> サテライトリソース言語 (例: en;ja)
+                                </TextBlock>
+
+                                <TextBlock FontWeight="Bold" Text="バージョン情報" Margin="0,5,0,3" Foreground="#495057"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8" Foreground="#6C757D">
+                                    <Bold>Version:</Bold> NuGetパッケージ/情報バージョン (例: 1.2.3) <Run Foreground="Red">[編集不可]</Run><LineBreak/>
+                                    <Bold>AssemblyVersion:</Bold> アセンブリの厳密名バージョン (例: 1.0.0.0)<LineBreak/>
+                                    <Bold>FileVersion:</Bold> ファイルバージョン (例: 1.2.3.456)
+                                </TextBlock>
+
+                                <TextBlock FontWeight="Bold" Text="メタデータ" Margin="0,5,0,3" Foreground="#495057"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="11" Margin="0,0,0,0" Foreground="#6C757D">
+                                    <Bold>Copyright:</Bold> 著作権表示<LineBreak/>
+                                    <Bold>Authors:</Bold> 作成者名 (カンマ区切り)<LineBreak/>
+                                    <Bold>Company:</Bold> 会社/組織名<LineBreak/>
+                                    <Bold>Product:</Bold> 製品名<LineBreak/>
+                                    <Bold>Description:</Bold> プロジェクトの説明<LineBreak/>
+                                    <Bold>RepositoryUrl:</Bold> リポジトリURL <Run Foreground="Red">[編集不可]</Run>
+                                </TextBlock>
+
+                                <TextBlock FontWeight="Bold" Text="ビルド構成設定" Margin="0,5,0,3" Foreground="#495057"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="11" Margin="0,0,0,0" Foreground="#6C757D">
+                                    <Bold>DebugType:</Bold> デバッグ情報の形式<LineBreak/>
+                                    • embedded: PDBを埋め込み<LineBreak/>
+                                    • full: 完全なデバッグ情報<LineBreak/>
+                                    • portable: ポータブルPDB<LineBreak/>
+                                    • pdbonly: PDBファイルのみ<LineBreak/>
+                                    • none: デバッグ情報なし<LineBreak/>
+                                    <Bold>OutputPath:</Bold> 出力先パス (例: bin\Debug, ..\..\..\Work)
+                                </TextBlock>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </ScrollViewer>
+        </GroupBox>
+
+        <!-- ファイルリスト -->
+        <Border Grid.Row="2" Background="White" CornerRadius="6" BorderBrush="#DEE2E6" BorderThickness="1" Margin="0,0,0,15">
+            <ListBox Name="FileListBox" SelectionMode="Multiple" BorderThickness="0" Background="Transparent">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Padding" Value="10,8"/>
+                        <EventSetter Event="MouseRightButtonDown" Handler="OnListBoxItemRightClick"/>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="個別編集..." Click="OnEditIndividualClicked"/>
+                        <Separator/>
+                        <MenuItem Header="リストから削除" Click="OnRemoveFromListClicked"/>
+                    </ContextMenu>
+                </ListBox.ContextMenu>
+            </ListBox>
+        </Border>
+
+        <!-- アクション エリア -->
+        <Border Grid.Row="3" Background="White" CornerRadius="6" Padding="15" Margin="0,0,0,15"
+                BorderBrush="#DEE2E6" BorderThickness="1">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <Button Content="個別編集" Width="120" Height="38" Click="OnEditIndividualClicked" 
+                            Style="{StaticResource ModernButton}" Margin="0,0,15,0"/>
+                    <TextBlock VerticalAlignment="Center" Foreground="#6C757D" FontSize="12">
+                        <Run Text="💡 ファイルを選択して個別に詳細編集できます"/>
+                        <LineBreak/>
+                        <Run Text="💡 一括適用: 選択中のファイルのみ適用（未選択時は全て）"/>
+                    </TextBlock>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- 一括適用ボタン -->
+        <Button Grid.Row="4" Content="✓ 一括適用" Height="45" Click="OnApplyClicked" 
+                Style="{StaticResource PrimaryButton}"/>
+    </Grid>
+</Window>
