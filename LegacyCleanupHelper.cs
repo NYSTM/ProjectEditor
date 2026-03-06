@@ -25,7 +25,7 @@ public static class LegacyCleanupHelper
         if (allLegacyElements == null)
             return false;
 
-        int totalLegacyCount = allLegacyElements.Sum(kvp => kvp.Value.Count);
+        int totalLegacyCount = allLegacyElements.Sum(kvp => kvp.Value.Elements.Count);
 
         // 対象要素がなければ完了を通知して終了
         if (totalLegacyCount == 0)
@@ -48,12 +48,12 @@ public static class LegacyCleanupHelper
     /// </summary>
     /// <param name="targetFiles">検査対象のプロジェクトファイルパスのシーケンス。</param>
     /// <returns>
-    /// ファイルパスをキー、検出された <see cref="LegacyElement"/> のリストを値とする辞書。
+    /// ファイルパスをキー、読み込み済み <see cref="ProjectModifier"/> と検出された <see cref="LegacyElement"/> のリストを値とする辞書。
     /// 読み込みエラー発生時は <see langword="null"/>。
     /// </returns>
-    private static Dictionary<string, List<LegacyElement>>? DetectLegacyElements(IEnumerable<string> targetFiles)
+    private static Dictionary<string, (ProjectModifier Modifier, List<LegacyElement> Elements)>? DetectLegacyElements(IEnumerable<string> targetFiles)
     {
-        var allLegacyElements = new Dictionary<string, List<LegacyElement>>();
+        var allLegacyElements = new Dictionary<string, (ProjectModifier Modifier, List<LegacyElement> Elements)>();
 
         foreach (string file in targetFiles)
         {
@@ -66,7 +66,7 @@ public static class LegacyCleanupHelper
                 // レガシー要素が存在するファイルのみ辞書に追加する
                 if (legacyElements.Count > 0)
                 {
-                    allLegacyElements[file] = legacyElements;
+                    allLegacyElements[file] = (modifier, legacyElements);
                 }
             }
             catch (Exception ex)
@@ -86,7 +86,7 @@ public static class LegacyCleanupHelper
     /// <param name="allLegacyElements">ファイルパスと検出要素リストの辞書。</param>
     /// <param name="totalLegacyCount">検出された要素の合計件数。</param>
     /// <returns>ユーザーが「はい」を選択した場合は <see langword="true"/>。</returns>
-    private static bool ShowPreviewAndConfirm(Dictionary<string, List<LegacyElement>> allLegacyElements, int totalLegacyCount)
+    private static bool ShowPreviewAndConfirm(Dictionary<string, (ProjectModifier Modifier, List<LegacyElement> Elements)> allLegacyElements, int totalLegacyCount)
     {
         var preview = BuildPreviewMessage(allLegacyElements, totalLegacyCount);
 
@@ -103,7 +103,7 @@ public static class LegacyCleanupHelper
     /// <param name="allLegacyElements">ファイルパスと検出要素リストの辞書。</param>
     /// <param name="totalLegacyCount">検出された要素の合計件数。</param>
     /// <returns>プレビューダイアログに表示するメッセージ文字列。</returns>
-    private static string BuildPreviewMessage(Dictionary<string, List<LegacyElement>> allLegacyElements, int totalLegacyCount)
+    private static string BuildPreviewMessage(Dictionary<string, (ProjectModifier Modifier, List<LegacyElement> Elements)> allLegacyElements, int totalLegacyCount)
     {
         var preview = new System.Text.StringBuilder();
         preview.AppendLine($"合計 {totalLegacyCount} 個の古い要素が検出されました。");
@@ -114,17 +114,18 @@ public static class LegacyCleanupHelper
         foreach (var kvp in allLegacyElements.Take(5))
         {
             var fileName = Path.GetFileName(kvp.Key);
-            preview.AppendLine($"\n■ {fileName} ({kvp.Value.Count}個)");
+            var elements = kvp.Value.Elements;
+            preview.AppendLine($"\n■ {fileName} ({elements.Count}個)");
 
             // 各ファイルの要素は最大3件まで表示する
-            foreach (var element in kvp.Value.Take(3))
+            foreach (var element in elements.Take(3))
             {
                 preview.AppendLine($"  ・{element.ElementName}: {element.AttributeValue}");
             }
 
-            if (kvp.Value.Count > 3)
+            if (elements.Count > 3)
             {
-                preview.AppendLine($"  ... 他 {kvp.Value.Count - 3} 個");
+                preview.AppendLine($"  ... 他 {elements.Count - 3} 個");
             }
         }
 
@@ -149,7 +150,7 @@ public static class LegacyCleanupHelper
     /// </summary>
     /// <param name="allLegacyElements">ファイルパスと削除対象要素リストの辞書。</param>
     /// <returns>1件以上のファイルを処理できた場合は <see langword="true"/>。</returns>
-    private static bool PerformCleanup(Dictionary<string, List<LegacyElement>> allLegacyElements)
+    private static bool PerformCleanup(Dictionary<string, (ProjectModifier Modifier, List<LegacyElement> Elements)> allLegacyElements)
     {
         int cleanedFiles = 0;
         int totalRemoved = 0;
@@ -159,11 +160,11 @@ public static class LegacyCleanupHelper
         {
             try
             {
-                var modifier = new ProjectModifier(kvp.Key);
-                modifier.Load();
+                // 検出時と同じProjectModifierインスタンスを使用してXElement参照を保持する
+                var modifier = kvp.Value.Modifier;
+                var elements = kvp.Value.Elements;
 
-                // レガシー要素を削除して削除件数を累積する
-                int removed = modifier.RemoveLegacyElements(kvp.Value);
+                int removed = modifier.RemoveLegacyElements(elements);
                 totalRemoved += removed;
 
                 modifier.Save();
