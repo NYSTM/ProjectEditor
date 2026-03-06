@@ -308,17 +308,34 @@ public class ProjectModifier
             ?? throw new InvalidOperationException("ファイルパスからディレクトリを取得できませんでした。");
         var tempPath = Path.Combine(dir, Path.GetRandomFileName());
 
+        // 元ファイルにXML宣言があるかどうかを確認する
+        bool hasXmlDeclaration = _document.Declaration != null;
+
         try
         {
             using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
             {
-                _document.Save(stream);
+                if (hasXmlDeclaration)
+                {
+                    // 元ファイルにXML宣言がある場合はそのまま保存
+                    _document.Save(stream);
+                }
+                else
+                {
+                    // 元ファイルにXML宣言がない場合は宣言を出力しない
+                    var settings = new System.Xml.XmlWriterSettings
+                    {
+                        OmitXmlDeclaration = true,
+                        Indent = true,
+                    };
+                    using var writer = System.Xml.XmlWriter.Create(stream, settings);
+                    _document.Save(writer);
+                }
             }
             File.Replace(tempPath, FilePath, null);
         }
         catch
         {
-            // 書き込み失敗時はテンポラリファイルを削除
             if (File.Exists(tempPath))
                 File.Delete(tempPath);
             throw;
