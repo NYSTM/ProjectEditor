@@ -5,8 +5,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ProjectEditor"
         mc:Ignorable="d"
-        Title="プロジェクトファイル編集ツール" Height="750" Width="1200"
-        Background="#F8F9FA">
+        Title="プロジェクトファイル編集ツール" Height="900" Width="1400"
+        Background="#F8F9FA"
+        AllowDrop="True"
+        DragOver="OnFilesDragOver"
+        Drop="OnFilesDrop">
     
     <Window.Resources>
         <!-- モダンなボタンスタイル -->
@@ -98,11 +101,12 @@
         </Border>
 
         <!-- 一括編集設定 -->
-        <GroupBox Grid.Row="1" Margin="0,0,0,15" Padding="15" Background="White" BorderBrush="#DEE2E6" BorderThickness="1">
+        <GroupBox Grid.Row="1" Margin="0,0,0,15" Padding="15" Background="White" BorderBrush="#DEE2E6" BorderThickness="1"
+                  MaxHeight="260">
             <GroupBox.Header>
                 <TextBlock Text="⚙️ 一括編集設定" FontSize="16" FontWeight="SemiBold" Foreground="#212529"/>
             </GroupBox.Header>
-            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="320">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2*"/>
@@ -401,22 +405,36 @@
         </GroupBox>
 
         <!-- ファイルリスト -->
-        <Border Grid.Row="2" Background="White" CornerRadius="6" BorderBrush="#DEE2E6" BorderThickness="1" Margin="0,0,0,15">
-            <ListBox Name="FileListBox" SelectionMode="Multiple" BorderThickness="0" Background="Transparent">
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="Padding" Value="10,8"/>
-                        <EventSetter Event="MouseRightButtonDown" Handler="OnListBoxItemRightClick"/>
-                    </Style>
-                </ListBox.ItemContainerStyle>
-                <ListBox.ContextMenu>
-                    <ContextMenu>
-                        <MenuItem Header="個別編集..." Click="OnEditIndividualClicked"/>
-                        <Separator/>
-                        <MenuItem Header="リストから削除" Click="OnRemoveFromListClicked"/>
-                    </ContextMenu>
-                </ListBox.ContextMenu>
-            </ListBox>
+        <Border Grid.Row="2" MinHeight="180" Background="White" CornerRadius="6" BorderBrush="#DEE2E6" BorderThickness="1" Margin="0,0,0,15">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Background="#F8F9FA" BorderBrush="#DEE2E6" BorderThickness="0,0,0,1" Padding="12,10">
+                    <TextBlock Text="📄 対象ファイル一覧" FontSize="14" FontWeight="SemiBold" Foreground="#212529"/>
+                </Border>
+
+                <ListBox Grid.Row="1" Name="FileListBox" SelectionMode="Multiple" BorderThickness="0" Background="Transparent"
+                         AllowDrop="True"
+                         DragOver="OnFilesDragOver"
+                         Drop="OnFilesDrop">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="10,8"/>
+                            <EventSetter Event="MouseRightButtonDown" Handler="OnListBoxItemRightClick"/>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="個別編集..." Click="OnEditIndividualClicked"/>
+                            <Separator/>
+                            <MenuItem Header="リストから削除" Click="OnRemoveFromListClicked"/>
+                        </ContextMenu>
+                    </ListBox.ContextMenu>
+                </ListBox>
+            </Grid>
         </Border>
 
         <!-- アクション エリア -->

@@ -2,6 +2,7 @@ using System.Xml.Linq;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace ProjectEditor;
 
@@ -51,10 +52,10 @@ public class ProjectModifier
         if (string.IsNullOrWhiteSpace(value)) return;
 
         // 既存の PropertyGroup から検索
-        var propertyGroups = _document.Root.Elements("PropertyGroup");
+        var propertyGroups = _document.Root.Elements().Where(e => e.Name.LocalName == "PropertyGroup");
         foreach (var group in propertyGroups)
         {
-            var element = group.Element(propertyName);
+            var element = group.Elements().FirstOrDefault(e => e.Name.LocalName == propertyName);
             if (element != null)
             {
                 element.Value = value;
@@ -66,11 +67,15 @@ public class ProjectModifier
         var firstGroup = propertyGroups.FirstOrDefault();
         if (firstGroup == null)
         {
-            firstGroup = new XElement("PropertyGroup");
+            // PropertyGroupを新規作成する際も名前空間を考慮
+            var ns = _document.Root.Name.Namespace;
+            firstGroup = new XElement(ns + "PropertyGroup");
             _document.Root.AddFirst(firstGroup);
         }
 
-        firstGroup.Add(new XElement(propertyName, value));
+        // 新しいプロパティ要素を追加する際も名前空間を考慮
+        var ns2 = firstGroup.Name.Namespace;
+        firstGroup.Add(new XElement(ns2 + propertyName, value));
     }
 
     /// <summary>
@@ -83,7 +88,7 @@ public class ProjectModifier
             throw new InvalidOperationException("Load() を呼び出してください。");
 
         var properties = new Dictionary<string, string>();
-        var propertyGroups = _document.Root.Elements("PropertyGroup");
+        var propertyGroups = _document.Root.Elements().Where(e => e.Name.LocalName == "PropertyGroup");
 
         foreach (var group in propertyGroups)
         {
@@ -153,26 +158,28 @@ public class ProjectModifier
 
         if (string.IsNullOrWhiteSpace(value)) return;
 
-        var propertyGroups = _document.Root.Elements("PropertyGroup");
+        var propertyGroups = _document.Root.Elements().Where(e => e.Name.LocalName == "PropertyGroup");
         var targetGroup = propertyGroups.FirstOrDefault(g => 
             g.Attribute("Condition")?.Value == condition);
 
         if (targetGroup == null)
         {
             // 指定されたConditionのPropertyGroupが存在しない場合は作成
-            targetGroup = new XElement("PropertyGroup", new XAttribute("Condition", condition));
+            var ns = _document.Root.Name.Namespace;
+            targetGroup = new XElement(ns + "PropertyGroup", new XAttribute("Condition", condition));
             _document.Root.Add(targetGroup);
         }
 
         // 既存のプロパティを検索
-        var element = targetGroup.Element(propertyName);
+        var element = targetGroup.Elements().FirstOrDefault(e => e.Name.LocalName == propertyName);
         if (element != null)
         {
             element.Value = value;
         }
         else
         {
-            targetGroup.Add(new XElement(propertyName, value));
+            var ns = targetGroup.Name.Namespace;
+            targetGroup.Add(new XElement(ns + propertyName, value));
         }
     }
 
@@ -199,7 +206,7 @@ public class ProjectModifier
             throw new InvalidOperationException("Load() を呼び出してください。");
 
         var conditions = new List<string>();
-        var propertyGroups = _document.Root.Elements("PropertyGroup");
+        var propertyGroups = _document.Root.Elements().Where(e => e.Name.LocalName == "PropertyGroup");
 
         foreach (var group in propertyGroups)
         {
@@ -214,7 +221,19 @@ public class ProjectModifier
     }
 
     /// <summary>
-    /// Debug|AnyCPU および Release|AnyCPU 以外のConditionがあるかチェックします。
+    /// Condition文字列を正規化します（スペースを削除して比較可能な形式にします）。
+    /// </summary>
+    private static string NormalizeCondition(string condition)
+    {
+        if (string.IsNullOrWhiteSpace(condition))
+            return string.Empty;
+
+        // すべてのスペースを削除して正規化
+        return Regex.Replace(condition, @"\s+", "");
+    }
+
+    /// <summary>
+    /// Debug|AnyCPU または Release|AnyCPU 以外のConditionがあるかチェックします。
     /// </summary>
     public bool HasNonAnyCpuConditions()
     {
@@ -225,7 +244,10 @@ public class ProjectModifier
             "'$(Configuration)|$(Platform)'=='Release|AnyCPU'"
         };
 
-        return conditions.Any(c => !standardConditions.Contains(c));
+        // 標準Conditionも正規化
+        var normalizedStandardConditions = standardConditions.Select(NormalizeCondition).ToHashSet();
+
+        return conditions.Any(c => !normalizedStandardConditions.Contains(NormalizeCondition(c)));
     }
 
     /// <summary>
@@ -246,25 +268,25 @@ public class ProjectModifier
             var condition = propertyName[(lastBracketIndex + 1)..^1];
 
             // 指定されたConditionのPropertyGroupから削除
-            var propertyGroups = _document.Root.Elements("PropertyGroup");
+            var propertyGroups = _document.Root.Elements().Where(e => e.Name.LocalName == "PropertyGroup");
             var targetGroup = propertyGroups.FirstOrDefault(g =>
                 g.Attribute("Condition")?.Value == condition);
 
             if (targetGroup != null)
             {
-                var element = targetGroup.Element(actualPropertyName);
+                var element = targetGroup.Elements().FirstOrDefault(e => e.Name.LocalName == actualPropertyName);
                 element?.Remove();
             }
         }
         else
         {
             // 通常のプロパティ（Condition無し）を削除
-            var propertyGroups = _document.Root.Elements("PropertyGroup");
+            var propertyGroups = _document.Root.Elements().Where(e => e.Name.LocalName == "PropertyGroup");
             foreach (var group in propertyGroups)
             {
                 if (group.Attribute("Condition") == null)
                 {
-                    var element = group.Element(propertyName);
+                    var element = group.Elements().FirstOrDefault(e => e.Name.LocalName == propertyName);
                     element?.Remove();
                 }
             }

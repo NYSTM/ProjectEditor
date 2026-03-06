@@ -19,6 +19,117 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// ドラッグ中のデータが受け入れ可能か判定します。
+    /// </summary>
+    private void OnFilesDragOver(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
+        e.Effects = paths is { Length: > 0 } && paths.Any(IsSupportedDropPath)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// ドロップされたファイルやフォルダからプロジェクトファイルを追加します。
+    /// </summary>
+    private void OnFilesDrop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            return;
+        }
+
+        var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
+        if (paths is null || paths.Length == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var includeSubfolders = IncludeSubfoldersCheckBox.IsChecked == true;
+            var targetFiles = new List<string>();
+
+            foreach (var path in paths)
+            {
+                if (File.Exists(path) && IsProjectFile(path))
+                {
+                    targetFiles.Add(path);
+                }
+                else if (Directory.Exists(path))
+                {
+                    targetFiles.AddRange(GetProjectFilesFromFolder(path, includeSubfolders));
+                }
+            }
+
+            var distinctFiles = targetFiles.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            var addedCount = AddFilesToList(distinctFiles);
+
+            if (distinctFiles.Length == 0)
+            {
+                MessageBox.Show("追加可能なプロジェクトファイルが見つかりませんでした。", "情報",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else if (addedCount == 0)
+            {
+                MessageBox.Show("検出したプロジェクトファイルはすべて既に追加済みです。", "情報",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+
+            e.Handled = true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"ドラッグ＆ドロップ処理中にエラーが発生しました。{Environment.NewLine}{ex.Message}",
+                "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            e.Handled = true;
+        }
+    }
+
+    private static bool IsSupportedDropPath(string path)
+    {
+        return (File.Exists(path) && IsProjectFile(path)) || Directory.Exists(path);
+    }
+
+    private static bool IsProjectFile(string path)
+    {
+        var extension = Path.GetExtension(path);
+        return extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".vbproj", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static IEnumerable<string> GetProjectFilesFromFolder(string folderPath, bool includeSubfolders)
+    {
+        var searchOption = includeSubfolders ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+        return Directory.EnumerateFiles(folderPath, "*.csproj", searchOption)
+            .Concat(Directory.EnumerateFiles(folderPath, "*.vbproj", searchOption));
+    }
+
+    private int AddFilesToList(IEnumerable<string> files)
+    {
+        int addedCount = 0;
+
+        foreach (var file in files)
+        {
+            if (!FileListBox.Items.Contains(file))
+            {
+                FileListBox.Items.Add(file);
+                addedCount++;
+            }
+        }
+
+        return addedCount;
+    }
+
+    /// <summary>
     /// ファイル追加ボタンのクリックイベントハンドラ
     /// </summary>
     private void OnAddFilesClicked(object sender, RoutedEventArgs e)
@@ -31,11 +142,7 @@ public partial class MainWindow : Window
 
         if (dialog.ShowDialog() == true)
         {
-            foreach (var file in dialog.FileNames)
-            {
-                if (!FileListBox.Items.Contains(file))
-                    FileListBox.Items.Add(file);
-            }
+            AddFilesToList(dialog.FileNames);
         }
     }
 
@@ -56,11 +163,7 @@ public partial class MainWindow : Window
 
             try
             {
-                var searchOption = includeSubfolders ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-                var csprojFiles = Directory.GetFiles(folderPath, "*.csproj", searchOption);
-                var vbprojFiles = Directory.GetFiles(folderPath, "*.vbproj", searchOption);
-
-                var allFiles = csprojFiles.Concat(vbprojFiles).ToArray();
+                var allFiles = GetProjectFilesFromFolder(folderPath, includeSubfolders).ToArray();
 
                 if (allFiles.Length == 0)
                 {
@@ -69,15 +172,7 @@ public partial class MainWindow : Window
                     return;
                 }
 
-                int addedCount = 0;
-                foreach (var file in allFiles)
-                {
-                    if (!FileListBox.Items.Contains(file))
-                    {
-                        FileListBox.Items.Add(file);
-                        addedCount++;
-                    }
-                }
+                var addedCount = AddFilesToList(allFiles);
 
                 MessageBox.Show($"{addedCount} 個のプロジェクトファイルを追加しました。\n(合計: {allFiles.Length} 個のファイルが見つかりました)",
                     "完了", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -266,9 +361,16 @@ public partial class MainWindow : Window
                 {
                     var fileName = Path.GetFileName(file);
                     var conditions = modifier.GetAllConditions();
+                    
+                    // 標準Condition（正規化後の比較用）
+                    var standardConditionsNormalized = new HashSet<string>
+                    {
+                        "'$(Configuration)|$(Platform)'=='Debug|AnyCPU'".Replace(" ", ""),
+                        "'$(Configuration)|$(Platform)'=='Release|AnyCPU'".Replace(" ", "")
+                    };
+
                     var nonStandardConditions = conditions.Where(c =>
-                        c != "'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" &&
-                        c != "'$(Configuration)|$(Platform)'=='Release|AnyCPU'").ToList();
+                        !standardConditionsNormalized.Contains(c.Replace(" ", ""))).ToList();
 
                     if (nonStandardConditions.Count > 0)
                     {

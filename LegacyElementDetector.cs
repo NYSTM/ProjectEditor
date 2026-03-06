@@ -108,7 +108,7 @@ public class LegacyElementDetector
     /// <param name="legacyElements">検出結果を追加するリスト。</param>
     private void DetectLegacyReferences(List<LegacyElement> legacyElements)
     {
-        var references = _document.Root!.Descendants("Reference").ToList();
+        var references = _document.Root!.Descendants().Where(e => e.Name.LocalName == "Reference").ToList();
 
         // .NET 8 で暗黙的に参照されるため明示的な Reference 要素が不要なアセンブリ名一覧
         var legacyReferences = new System.Collections.Generic.HashSet<string>(System.StringComparer.OrdinalIgnoreCase)
@@ -149,7 +149,7 @@ public class LegacyElementDetector
     /// <param name="legacyElements">検出結果を追加するリスト。</param>
     private void DetectLegacyProperties(List<LegacyElement> legacyElements)
     {
-        var propertyGroups = _document.Root!.Elements("PropertyGroup");
+        var propertyGroups = _document.Root!.Elements().Where(e => e.Name.LocalName == "PropertyGroup");
 
         // .NET 8 では不要または代替プロパティへの移行が必要なプロパティ名と理由の対応表
         var legacyProperties = new Dictionary<string, string>
@@ -171,7 +171,35 @@ public class LegacyElementDetector
             { "ProjectTypeGuids", "古いプロジェクトタイプ識別子（不要）" },
             { "GenerateAssemblyInfo", ".NET 8ではデフォルトでtrue（明示不要）" },
             { "ImportWindowsDesktopTargets", ".NET 8では不要（UseWPF/UseWindowsFormsを使用）" },
-            { "DocumentationFile", ".NET 8ではGenerateDocumentationFileを使用" }
+            { "DocumentationFile", ".NET 8ではGenerateDocumentationFileを使用" },
+            { "ApplicationManifest", ".NET 8では明示的な指定は不要（app.manifestは自動認識される）" },
+            
+            // ClickOnce配置関連（.NET 8では非推奨、MSIX等を推奨）
+            { "IsWebBootstrapper", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "PublishUrl", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "Install", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "InstallFrom", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "UpdateEnabled", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "UpdateMode", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "UpdateInterval", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "UpdateIntervalUnits", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "UpdatePeriodically", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "UpdateRequired", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "MapFileExtensions", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "ApplicationRevision", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "ApplicationVersion", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "UseApplicationTrust", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "BootstrapperEnabled", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "CreateDesktopShortcut", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "CreateWebPageOnPublish", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "WebPage", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "OpenBrowserOnPublish", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "DisallowUrlActivation", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "ProductName", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "PublisherName", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "SuiteName", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "SupportUrl", "ClickOnce配置設定（.NET 8では非推奨）" },
+            { "ErrorReportUrl", "ClickOnce配置設定（.NET 8では非推奨）" }
         };
 
         foreach (var group in propertyGroups)
@@ -179,7 +207,7 @@ public class LegacyElementDetector
             // 既知プロパティ名リストと照合して検出する
             foreach (var property in legacyProperties)
             {
-                var element = group.Element(property.Key);
+                var element = group.Elements().FirstOrDefault(e => e.Name.LocalName == property.Key);
                 if (element != null)
                 {
                     legacyElements.Add(new LegacyElement
@@ -203,10 +231,10 @@ public class LegacyElementDetector
     /// </summary>
     /// <param name="group">検査対象の <c>PropertyGroup</c> 要素。</param>
     /// <param name="legacyElements">検出結果を追加するリスト。</param>
-    private static void DetectConditionalLegacyProperties(XElement group, List<LegacyElement> legacyElements)
+    private void DetectConditionalLegacyProperties(XElement group, List<LegacyElement> legacyElements)
     {
         // GenerateDocumentationFile=false は .NET 8 のデフォルトと同じため明示不要
-        var generateDocElement = group.Element("GenerateDocumentationFile");
+        var generateDocElement = group.Elements().FirstOrDefault(e => e.Name.LocalName == "GenerateDocumentationFile");
         if (generateDocElement != null &&
             generateDocElement.Value.Equals("false", System.StringComparison.OrdinalIgnoreCase))
         {
@@ -220,7 +248,7 @@ public class LegacyElementDetector
         }
 
         // 値が空の NoWarn は警告を抑制する効果がなく不要
-        var noWarnElement = group.Element("NoWarn");
+        var noWarnElement = group.Elements().FirstOrDefault(e => e.Name.LocalName == "NoWarn");
         if (noWarnElement != null && string.IsNullOrWhiteSpace(noWarnElement.Value))
         {
             legacyElements.Add(new LegacyElement
@@ -240,8 +268,8 @@ public class LegacyElementDetector
     /// <param name="legacyElements">検出結果を追加するリスト。</param>
     private void DetectLegacyCompileIncludes(List<LegacyElement> legacyElements)
     {
-        var compileIncludes = _document.Root!.Descendants("Compile")
-            .Where(c => c.Attribute("Include") != null)
+        var compileIncludes = _document.Root!.Descendants()
+            .Where(e => e.Name.LocalName == "Compile" && e.Attribute("Include") != null)
             .ToList();
 
         foreach (var compile in compileIncludes)
@@ -273,8 +301,8 @@ public class LegacyElementDetector
     private void DetectLegacyNoneItems(List<LegacyElement> legacyElements)
     {
         // None Update 要素を検出する
-        var noneUpdates = _document.Root!.Descendants("None")
-            .Where(n => n.Attribute("Update") != null)
+        var noneUpdates = _document.Root!.Descendants()
+            .Where(e => e.Name.LocalName == "None" && e.Attribute("Update") != null)
             .ToList();
 
         foreach (var none in noneUpdates)
@@ -293,8 +321,8 @@ public class LegacyElementDetector
         }
 
         // None Include 要素を検出する
-        var noneIncludes = _document.Root!.Descendants("None")
-            .Where(n => n.Attribute("Include") != null)
+        var noneIncludes = _document.Root!.Descendants()
+            .Where(e => e.Name.LocalName == "None" && e.Attribute("Include") != null)
             .ToList();
 
         foreach (var none in noneIncludes)
