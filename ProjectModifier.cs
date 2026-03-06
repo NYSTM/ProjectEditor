@@ -158,9 +158,12 @@ public class ProjectModifier
 
         if (string.IsNullOrWhiteSpace(value)) return;
 
+        var normalizedCondition = NormalizeCondition(condition);
         var propertyGroups = _document.Root.Elements().Where(e => e.Name.LocalName == "PropertyGroup");
-        var targetGroup = propertyGroups.FirstOrDefault(g => 
-            g.Attribute("Condition")?.Value == condition);
+
+        // Conditionをスペース正規化して既存グループを検索する
+        var targetGroup = propertyGroups.FirstOrDefault(g =>
+            NormalizeCondition(g.Attribute("Condition")?.Value ?? string.Empty) == normalizedCondition);
 
         if (targetGroup == null)
         {
